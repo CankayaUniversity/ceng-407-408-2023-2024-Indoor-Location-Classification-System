@@ -1,0 +1,90 @@
+import cv2
+import numpy as np
+from skimage.metrics import structural_similarity as ssim
+from keras.preprocessing import image
+from keras.applications.vgg16 import VGG16, preprocess_input
+import os
+
+def histogram_matching(img1, img2):
+    # Histogram eşleme işlemi için renkli görüntüleri gri tonlamaya dönüştürme
+    img1_gray = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+    img2_gray = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+
+    # Histogram eşleme işlemi
+    matched = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8)).apply(img2_gray)
+
+    return matched
+
+def resize_image(image, target_size):
+    return cv2.resize(image, target_size, interpolation=cv2.INTER_AREA)
+
+def calculate_similarity(model, img1, img2):
+    features1 = model.predict(preprocess_image(img1))
+    features2 = model.predict(preprocess_image(img2))
+    similarity = np.dot(features1.flatten(), features2.flatten())
+
+    return similarity
+
+def preprocess_image(img):
+    img_array = cv2.resize(img, (224, 224))
+    img_array = np.expand_dims(img_array, axis=0)
+    img_array = preprocess_input(img_array)
+
+    return img_array
+
+def find_best_matches(input_image_path, images_folder_name, similarity_threshold=0.8):
+    # Giriş görüntüsünü yükleme
+    input_image = cv2.imread(input_image_path)
+    target_size = (224, 224)  # VGG16 modeline uygun boyut
+
+    # Giriş görüntüsünü boyutlandırma
+    input_image_resized = resize_image(input_image, target_size)
+
+    best_matches = []  # En yüksek benzerlik skoruna sahip fotoğrafların listesi
+    threshold = similarity_threshold  # Eşleşme için kabul edilebilir benzerlik eşiği
+
+    # Klasör adını al ve bu klasördeki fotoğrafları kontrol et
+    current_directory = os.getcwd()
+    images_folder_path = os.path.join(current_directory, images_folder_name)
+
+    # VGG16 modelini yükleme
+    model = VGG16(weights='imagenet', include_top=False)
+
+    for image_file in os.listdir(images_folder_path):
+        image_path = os.path.join(images_folder_path, image_file)
+        reference_image = cv2.imread(image_path)
+
+        # Referans görüntüsünü boyutlandırma
+        reference_image_resized = resize_image(reference_image, target_size)
+
+        # Histogram eşleme işlemini uygula
+        matched_image = histogram_matching(input_image_resized, reference_image_resized)
+
+        # Benzerlik skorunu hesapla (VGG16 ile)
+        similarity = calculate_similarity(model, input_image_resized, reference_image_resized)
+
+        # Eğer benzerlik skoru eşiği aşılıyorsa, eşleşmeyi listeye ekle
+        if similarity > threshold:
+            match_info = {"image_file": image_file, "similarity_score": similarity}
+            best_matches.append(match_info)
+
+    # Listeyi benzerlik skoruna göre sırala (yüksekten düşüğe)
+    best_matches.sort(key=lambda x: x["similarity_score"], reverse=True)
+
+    return best_matches
+
+# Örnek kullanım
+input_image_path = "20231120_221018.jpg"
+images_folder_path = "folder"
+
+# En iyi eşleşen fotoğrafları bulma
+best_matches = find_best_matches(input_image_path, images_folder_path)
+
+# Sonuçları ekrana yazdırma
+if best_matches:
+    print("En çok eşleşen fotoğraflar:")
+    for match_info in best_matches:
+        print(f"- {match_info['image_file']}: Benzerlik Oranı: {match_info['similarity_score']:.2%}")
+else:
+    print("Eşleşme bulunamadı")
+
