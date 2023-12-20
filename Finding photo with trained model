@@ -1,0 +1,30 @@
+import os
+import cv2
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.preprocessing import image
+from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input
+from sklearn.preprocessing import LabelEncoder
+
+def load_trained_model(model_filename, encoder_filename):
+    model = tf.keras.models.load_model(model_filename)
+    encoder = LabelEncoder()
+    encoder.classes_ = np.load(encoder_filename, allow_pickle=True)
+    return model, encoder
+
+def preprocess_image(image_path):
+    img = cv2.imread(image_path)
+    processed_image = preprocess_input(np.expand_dims(cv2.resize(img, (512, 512)), axis=0))
+    return processed_image
+
+def predict_label(input_image, model, encoder):
+    processed_input = preprocess_image(input_image)
+    predictions = model.predict(processed_input)
+    predicted_label = encoder.inverse_transform(np.argmax(predictions, axis=1))[0]
+    return predicted_label
+
+# Test aşaması
+input_image_path = "20231103_111839.jpg"
+loaded_model, loaded_encoder = load_trained_model("trained_model.keras", "label_encoder.npy")
+predicted_label = predict_label(input_image_path, loaded_model, loaded_encoder)
+print(f"Girilen resim sınıfı: {predicted_label}")
