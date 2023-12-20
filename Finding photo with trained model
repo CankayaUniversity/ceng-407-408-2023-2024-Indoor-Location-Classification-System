@@ -23,8 +23,8 @@ def predict_label(input_image, model, encoder):
     predicted_label = encoder.inverse_transform(np.argmax(predictions, axis=1))[0]
     return predicted_label
 
-# Test aşaması
-input_image_path = "20231103_111839.jpg"
+# Testing
+input_image_path = "20231103_111839.jpg"     # test the image
 loaded_model, loaded_encoder = load_trained_model("trained_model.keras", "label_encoder.npy")
 predicted_label = predict_label(input_image_path, loaded_model, loaded_encoder)
-print(f"Girilen resim sınıfı: {predicted_label}")
+print(f"Entered image class: {predicted_label}")
