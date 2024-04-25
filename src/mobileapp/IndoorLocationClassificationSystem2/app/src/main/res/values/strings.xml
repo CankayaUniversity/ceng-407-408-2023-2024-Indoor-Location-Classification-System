@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">IndoorLocation</string>
+    <string name="take_photo">Take Photo</string>
+    <string name="galeri_button">Pick Image</string>
+</resources>
